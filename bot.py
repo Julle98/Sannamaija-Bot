@@ -281,9 +281,9 @@ class MielipideModal(Modal):
 @bot.tree.command(name="sammutus", description="Sammuta botti")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def sammutus(interaction: discord.Interaction):
-    bot_status_kanava = discord.utils.get(interaction.guild.text_channels, name="bot-status")
+    bot_status_kanava = discord.utils.get(interaction.guild.text_channels, name="YOUR_CHANNEL")
     if not bot_status_kanava:
-        bot_status_kanava = await interaction.guild.create_text_channel(name="bot-status")
+        bot_status_kanava = await interaction.guild.create_text_channel(name="YOUR_CHANNEL")
 
     async for message in bot_status_kanava.history(limit=100):
         await message.delete()
@@ -307,9 +307,9 @@ async def vaihda_tilaviesti(interaction: discord.Interaction, uusi_teksti: str):
 @bot.tree.command(name="uudelleenkaynnistys", description="Käynnistä botti uudelleen")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def uudelleenkaynnistys(interaction: discord.Interaction):
-    bot_status_kanava = discord.utils.get(interaction.guild.text_channels, name="bot-status")
+    bot_status_kanava = discord.utils.get(interaction.guild.text_channels, name="YOUR_CHANNEL")
     if not bot_status_kanava:
-        bot_status_kanava = await interaction.guild.create_text_channel(name="bot-status")
+        bot_status_kanava = await interaction.guild.create_text_channel(name="YOUR_CHANNEL")
 
     async for message in bot_status_kanava.history(limit=100):
         await message.delete()
@@ -381,15 +381,15 @@ async def mute(interaction: discord.Interaction, jäsen: discord.Member, kesto: 
             await interaction.response.send_message("Virheellinen aikaformaatti. Käytä esimerkiksi: 10s, 5m, 1h")
             return
 
-        remove_role = discord.utils.get(interaction.guild.roles, name="24G")
-        mute_role = discord.utils.get(interaction.guild.roles, name="Muted")
+        remove_role = discord.utils.get(interaction.guild.roles, name="YOUR_ROLE")
+        mute_role = discord.utils.get(interaction.guild.roles, name="YOUR_ROLE")
 
         if not remove_role:
-            await interaction.response.send_message("Roolia '24G' ei löytynyt.")
+            await interaction.response.send_message("Roolia 'YOUR_ROLE' ei löytynyt.")
             return
 
         if not mute_role:
-            mute_role = await interaction.guild.create_role(name="Muted")
+            mute_role = await interaction.guild.create_role(name="YOUR_ROLE")
             for channel in interaction.guild.channels:
                 await channel.set_permissions(mute_role, send_messages=False, speak=False, add_reactions=False)
 
@@ -439,9 +439,9 @@ async def huolto(interaction: discord.Interaction):
                     await interaction.followup.send("Virheellinen aikaformaatti. Käytä esimerkiksi: 10s, 5m, 1h")
                     return
 
-                huolto_kanava = discord.utils.get(interaction.guild.text_channels, name="bot-status")
+                huolto_kanava = discord.utils.get(interaction.guild.text_channels, name="YOUR_CHANNEL")
                 if not huolto_kanava:
-                    huolto_kanava = await interaction.guild.create_text_channel(name="bot-status")
+                    huolto_kanava = await interaction.guild.create_text_channel(name="YOUR_CHANNEL")
 
                 await huolto_kanava.send(f"Botti menee huoltotilaan. Arvioitu kesto: {kesto}. Lisätiedot: {lisatiedot_text}")
                 await interaction.followup.send(f"Huoltoaika {kesto} ja lisätiedot {lisatiedot_text} vahvistettu ja merkitty kanavalle {huolto_kanava.mention}.")
