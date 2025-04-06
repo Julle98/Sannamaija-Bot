@@ -34,14 +34,7 @@ class MyBot(commands.Bot):
         self.current_status = "Online"
 
 statuses = [
-    "Valmiina soittamaan musiikkia",
-    "Odottaa uusia komentoja",
-    "Auttaa 24G ryhmäläisiä",
-    "Kerään tietonne",
-    "Seurana keskusteluissa",
-    "Käynnissä 24G ryhmän kanssa",
-    "Odottaa musiikkia",
-    "Toimin osittain luultavasti"
+    "YOUR_STATUSES"
 ]
 
 music_queue = deque()
@@ -131,9 +124,7 @@ def get_current_time_in_utc_plus_2():
 @bot.event
 async def on_member_join(member): 
     tervetuloviesti = (
-        "Tervetuloa 24G discord palvelimelle. Olen yksi palvelimen boteista ja minua voit ohjata erilaisilla `/` komennoilla. "
-        "Odota kuitenkin ensin rauhassa hyväksymistä palvelimelle. Manuaalinen verifiointi voi viedä aikaa. "
-        "Hauska nähdä sinut täällä!\n\n(tämä viesti on lähetetty automaattisesti)"
+        "YOUR_WELCOME_MESSGE"
     )
 
     try:
@@ -261,13 +252,13 @@ class MielipideModal(Modal):
     async def on_submit(self, interaction: discord.Interaction):
         kohde = self.children[0].value
         vastaukset = [
-            ("W", 50),
-            ("L", 42),
-            ("Ehdottomasti", 3),
-            ("En usko", 2),
-            ("Vaikea sanoa", 1),
-            ("Mahdollisesti", 1),
-            ("Ei todellakaan", 1)
+            ("YOUR_TEXT", 50),
+            ("YOUR_TEXT", 42),
+            ("YOUR_TEXT", 3),
+            ("YOUR_TEXT", 2),
+            ("YOUR_TEXT", 1),
+            ("YOUR_TEXT", 1),
+            ("YOUR_TEXT", 1)
         ]
 
         valinta = random.choices(
