@@ -216,12 +216,50 @@ async def moikka(interaction):
 @bot.tree.command(name="ruokailuvuorot", description="Näytä ruokailuvuorot")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def ruokailuvuorot(interaction):
-    await interaction.response.send_message("https://drive.google.com/file/d/1BFU02aJIFbSRYhPHix8VvqI_g_waMCNp/view?pli=1")
+    await interaction.response.send_message("YOUR_LINK")
+
+@bot.tree.command(name="kutsumalinkki", description="Antaa kutsulinkin serverille")
+@app_commands.checks.has_role("YOUR_ROLE")
+async def nofal(interaction):
+    await interaction.response.send_message("YOUR_INVITE_LINK")
 
 @bot.tree.command(name="ruoka", description="Näytä Ruokalista")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def ruokailuvuorot(interaction):
-    await interaction.response.send_message("https://kouluruoka.fi/menu/vantaa_tikkurilanlukio/")
+    await interaction.response.send_message("YOUR_LINK")
+
+lomapaivat = {
+    datetime(2025, 1, 1): "Uudenvuodenpäivä",
+    datetime(2025, 1, 6): "Loppiainen",
+    datetime(2025, 4, 18): "Pitkäperjantai",
+    datetime(2025, 4, 20): "Pääsiäispäivä",
+    datetime(2025, 4, 21): "Toinen pääsiäispäivä",
+    datetime(2025, 5, 1): "Vapunpäivä",
+    datetime(2025, 5, 18): "Helluntaipäivä",
+    datetime(2025, 6, 21): "Juhannuspäivä",
+    datetime(2025, 11, 1): "Pyhäinpäivä",
+    datetime(2025, 12, 6): "Itsenäisyyspäivä",
+    datetime(2025, 12, 25): "Joulupäivä",
+    datetime(2025, 12, 26): "Tapaninpäivä"
+}
+
+@bot.tree.command(name="seuraava_lomapaiva", description="Näyttää seuraavan lomapäivän")
+@app_commands.checks.has_role("YOUR_ROLE")
+async def seuraava_lomapaiva(interaction: discord.Interaction):
+    nyt = datetime.now()
+    seuraava = None
+
+    for paiva, nimi in lomapaivat.items():
+        if paiva > nyt:
+            seuraava = (paiva, nimi)
+            break
+
+    if seuraava:
+        paiva, nimi = seuraava
+        vastaus = paiva.strftime("%A %d.%m.%Y")  # Päiväys muodossa: "Perjantai 18.04.2025"
+        await interaction.response.send_message(f"Seuraava lomapäivä on: {nimi} {vastaus}")
+    else:
+        await interaction.response.send_message("Kalenterissa ei ole tulevia lomapäiviä.", ephemeral=True)
 
 @bot.tree.command(name="sano", description="Sano Sannamaijalle sanottavaa")
 @app_commands.checks.has_role("YOUR_ROLE")
@@ -269,6 +307,26 @@ class MielipideModal(Modal):
 
         await interaction.response.send_message(f"Mielipiteeni kohteesta {kohde} on {valinta}")
 
+meme_urls = [
+    "YOUR_LINKS"
+]
+
+last_meme_url = None  
+
+@bot.tree.command(name="meme", description="Lähetä satunnainen meemi")
+@app_commands.checks.has_role("YOUR_ROLE")
+async def meme(interaction: discord.Interaction):
+    global last_meme_url
+    available_memes = [url for url in meme_urls if url != last_meme_url]
+
+    if not available_memes:
+        available_memes = meme_urls  
+
+    selected_meme = random.choice(available_memes)
+    last_meme_url = selected_meme
+
+    await interaction.response.send_message(selected_meme)
+
 @bot.tree.command(name="sammutus", description="Sammuta botti")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def sammutus(interaction: discord.Interaction):
@@ -294,6 +352,21 @@ async def vaihda_tilaviesti(interaction: discord.Interaction, uusi_teksti: str):
     await bot.change_presence(activity=discord.Game(name=current_status))
     await interaction.response.send_message(f"Tilaviesti vaihdettu: {current_status}")
 
+@bot.tree.command(name="vaihda_nimimerkki", description="Vaihda jäsenen nimimerkki palvelimella")
+@app_commands.checks.has_permissions(manage_nicknames=True)
+@app_commands.checks.has_role("YOUR_ROLE")
+async def vaihda_nimimerkki(interaction: discord.Interaction, jasen: discord.Member, uusi_nimimerkki: str):
+    try:
+        await jasen.edit(nick=uusi_nimimerkki)
+        await interaction.response.send_message(
+            f"{jasen.mention} nimimerkki vaihdettu: {uusi_nimimerkki}", ephemeral=False
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "En voi vaihtaa tämän jäsenen nimimerkkiä.", ephemeral=True
+        )
+    except Exception as e:
+        await interaction.response.send_message(f"Virhe: {str(e)}", ephemeral=True)
 
 @bot.tree.command(name="uudelleenkaynnistys", description="Käynnistä botti uudelleen")
 @app_commands.checks.has_role("YOUR_ROLE")
@@ -350,6 +423,19 @@ async def clear(interaction: discord.Interaction):
     modal = ChannelClearModal()
     await interaction.response.send_modal(modal)
 
+@bot.tree.command(name="lukitse", description="Lukitsee kanavan kaikilta")
+@app_commands.checks.has_role("YOUR_ROLE")  
+async def lukitse(interaction: discord.Interaction, kanava: discord.TextChannel):
+    await kanava.set_permissions(interaction.guild.default_role, send_messages=False)
+    await kanava.set_permissions(interaction.user, send_messages=True)
+ 
+    await interaction.response.send_message(f"Kanava {kanava.name} on lukittu onnistuneesti!", ephemeral=True)
+
+@bot.tree.command(name="ping", description="Näytä botin viive")
+@app_commands.checks.has_role("YOUR_ROLE")
+async def ping(interaction: discord.Interaction):
+    latency = round(bot.latency * 1000)  
+    await interaction.response.send_message(f"Botin viive on {latency} ms.")
 
 @bot.tree.command(name="mute", description="Aseta mute jäsenelle")
 @app_commands.checks.has_role("YOUR_ROLE")
@@ -450,6 +536,7 @@ async def huolto(interaction: discord.Interaction):
 @sammutus.error
 @uudelleenkaynnistys.error
 @vaihda_tilaviesti.error
+@vaihda_nimimerkki.error
 @clear.error
 @mute.error
 @huolto.error
