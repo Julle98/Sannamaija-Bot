@@ -1,0 +1,13 @@
+# All the requirements for the bot
+discord.py
+yt_dlp
+pypresence
+pytz
+asyncio
+re
+datetime
+modal
+os
+logging
+random
+datetime
