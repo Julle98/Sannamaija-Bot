@@ -228,6 +228,97 @@ async def nofal(interaction):
 async def ruokailuvuorot(interaction):
     await interaction.response.send_message("YOUR_LINK")
 
+@bot.tree.command(name="laskin", description="Laskee laskun ja voi halutessa näyttää selityksen.")
+@app_commands.describe(lasku="Anna laskutoimitus, esim. 2^3 + sqrt(16)", selitys="Haluatko selityksen? kyllä/ei")
+async def laskin(interaction: discord.Interaction, lasku: str, selitys: str = "ei"):
+    try:
+        lasku_parsittu = lasku.replace("^", "**").replace("sqrt", "math.sqrt")
+
+        if not re.fullmatch(r'^[\d\s\.\+\-\*/\(\)\^mathsqrt]+$', lasku_parsittu):
+            await interaction.response.send_message("Laskussa saa käyttää vain numeroita, + - * / ^ (), ja sqrt().", ephemeral=True)
+            return
+
+        tulos = eval(lasku_parsittu, {"__builtins__": None, "math": math})
+
+        if selitys.lower() in ["kyllä", "kylla", "yes"]:
+            await interaction.response.send_message(
+                f"Lasku: `{lasku}`\n Tulos: **{tulos}**\n"
+                f"Selitys: Käytettiin laskutoimituksia, joissa '^' on potenssi ja `sqrt()` on neliöjuuri. "
+            )
+        else:
+            await interaction.response.send_message(f"Lasku: `{lasku}`\n Tulos: **{tulos}**", ephemeral=True)
+
+    except Exception as e:
+        await interaction.response.send_message(f"Virhe laskussa: {str(e)}", ephemeral=True)
+
+import re
+import asyncio
+
+ajastin_aktiiviset = {}  
+
+async def ajastin_odotus(interaction: discord.Interaction, sekunnit: int):
+    try:
+        await asyncio.sleep(sekunnit)
+        await interaction.user.send(f"Hei {interaction.user.mention}, aikasi on kulunut!")
+    except asyncio.CancelledError:
+        try:
+            await interaction.user.send("Ajastimesi keskeytettiin, koska botti sammutettiin.")
+        except discord.Forbidden:
+            pass
+
+@bot.tree.command(name="ajastin", description="Aseta ajastin ja saat ilmoituksen Sannamaijalta, kun aika on kulunut.")
+@app_commands.describe(aika="Aika muodossa esim. 2m30s, 1m, 45s")
+async def ajastin(interaction: discord.Interaction, aika: str):
+    aika = aika.lower().replace(" ", "")
+    pattern = r'(?:(\d+)m)?(?:(\d+)s)?'
+    match = re.fullmatch(pattern, aika)
+
+    if not match:
+        await interaction.response.send_message("Anna aika muodossa esim. `2m30s`, `15m`, `45s`.", ephemeral=True)
+        return
+
+    minuutit = int(match.group(1)) if match.group(1) else 0
+    sekunnit = int(match.group(2)) if match.group(2) else 0
+    kokonais_sekunnit = minuutit * 60 + sekunnit
+
+    if kokonais_sekunnit == 0:
+        await interaction.response.send_message("Ajan täytyy olla yli 0 sekuntia!", ephemeral=True)
+        return
+
+    await interaction.response.send_message(f"Ajastin asetettu **{kokonais_sekunnit} sekunnille**!")
+
+
+    task = asyncio.create_task(ajastin_odotus(interaction, kokonais_sekunnit))
+    ajastin_aktiiviset[interaction.user.id] = task
+
+@bot.tree.command(name="kulppi", description="Laskee kuinka monta kulppia annetusta ajasta")
+@app_commands.describe(aika="Aika muodossa esim. 2m30s, 1m, 45s")
+async def kulppi(interaction: discord.Interaction, aika: str):
+    aika = aika.lower().replace(" ", "")
+    pattern = r'(?:(\d+)m)?(?:(\d+)s)?'
+    match = re.fullmatch(pattern, aika)
+
+    if not match:
+        await interaction.response.send_message("Anna aika muodossa esim. `2m30s`, `15m`, `45s`.", ephemeral=True)
+        return
+
+    minuutit = int(match.group(1)) if match.group(1) else 0
+    sekunnit = int(match.group(2)) if match.group(2) else 0
+    kokonais_sekunnit = minuutit * 60 + sekunnit
+
+    if kokonais_sekunnit == 0:
+        await interaction.response.send_message("Ajan täytyy olla enemmän kuin 0 sekuntia.", ephemeral=True)
+        return
+
+    kulppi_kesto = 90
+    kulppeja = kokonais_sekunnit / kulppi_kesto
+
+    await interaction.response.send_message(
+        f"Annettu aika: **{kokonais_sekunnit} sekuntia**\n"
+        f"1 kulppi = 90 sekuntia\n"
+        f"Vastaa noin **{kulppeja:.2f} kulppia**",
+    )
+
 lomapaivat = {
     datetime(2025, 1, 1): "Uudenvuodenpäivä",
     datetime(2025, 1, 6): "Loppiainen",
