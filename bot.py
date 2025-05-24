@@ -538,7 +538,6 @@ class RerollView(discord.ui.View):
     kesto="Arvonnan kesto minuutteina",
     rooli="Rooli, jolla saa osallistua"
 )
-@app_commands.checks.has_role("Mestari")
 async def giveaway(interaction: Interaction, palkinto: str, kesto: int, rooli: discord.Role):
 
     view = GiveawayView(palkinto, rooli, kesto, None, interaction.user)
@@ -667,9 +666,9 @@ async def ping(interaction: discord.Interaction):
 @bot.tree.command(name="mute", description="Aseta mute jäsenelle")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def mute(interaction: discord.Interaction, jäsen: discord.Member, kesto: str):
-    mestari_role = discord.utils.get(interaction.guild.roles, name="Mestari")
-    if mestari_role in jäsen.roles:
-        await interaction.response.send_message("Et voi asettaa mutea käyttäjälle, jolla on Mestari-rooli.")
+    role_role = discord.utils.get(interaction.guild.roles, name="YOUR_ROLE")
+    if role_role in jäsen.roles:
+        await interaction.response.send_message("Et voi asettaa mutea käyttäjälle, jolla on ROLE-rooli.")
         return
 
     try:
