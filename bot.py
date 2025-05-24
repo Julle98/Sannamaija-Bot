@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import yt_dlp as youtube_dl
+from discord import app_commands, Interaction
 import asyncio
 import logging
 import os
@@ -11,6 +12,8 @@ from datetime import datetime
 import random
 import re
 from bs4 import BeautifulSoup
+import requests
+import math
 from pypresence import Presence
 from collections import deque
 from discord import ui, TextInput
@@ -223,10 +226,34 @@ async def ruokailuvuorot(interaction):
 async def nofal(interaction):
     await interaction.response.send_message("YOUR_INVITE_LINK")
 
-@bot.tree.command(name="ruoka", description="Näytä Ruokalista")
-@app_commands.checks.has_role("YOUR_ROLE")
-async def ruokailuvuorot(interaction):
-    await interaction.response.send_message("YOUR_LINK")
+@bot.tree.command(name="ruoka", description="Näyttää päivän ruoan.")
+@app_commands.checks.has_role("24G")
+async def ruoka(interaction: discord.Interaction):
+
+    weekday = datetime.now().weekday()
+    if weekday >= 5:
+        await interaction.response.send_message("Ei ruokana tänään mitään.")
+        return
+
+    url = "YOUR_URL"  # Replace with the actual URL of the food menu
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    first = soup.find("span", id="YOUR_ID_FOR_FIRST_DISH")  # Replace with the actual ID for the first dish
+    second = soup.find("span", id="YOUR_ID_FOR_SECOND_DISH")  # Replace with the actual ID for the second dish
+    third = soup.find("span", id="YOUR_ID_FOR_THIRD_DISH")  # Replace with the actual ID for the third dish
+
+    dishes = [
+        dish.text.strip()
+        for dish in [first, second, third]
+        if dish
+    ]
+
+    if dishes:
+        menu_text = f"Ruokana tänään: {', '.join(dishes)}."
+        await interaction.response.send_message(menu_text)
+    else:
+        await interaction.response.send_message("Ruoan tietoja ei löytynyt.")
 
 @bot.tree.command(name="laskin", description="Laskee laskun ja voi halutessa näyttää selityksen.")
 @app_commands.describe(lasku="Anna laskutoimitus, esim. 2^3 + sqrt(16)", selitys="Haluatko selityksen? kyllä/ei")
@@ -291,6 +318,31 @@ async def ajastin(interaction: discord.Interaction, aika: str):
     task = asyncio.create_task(ajastin_odotus(interaction, kokonais_sekunnit))
     ajastin_aktiiviset[interaction.user.id] = task
 
+@bot.tree.command(name="arvosanalaskuri", description="Laskee arvosanan pisteiden ja läpipääsyprosentin perusteella.")
+@app_commands.describe(
+    pisteet="Saadut pisteet",
+    maksimi="Maksimipistemäärä",
+    lapipääsyprosentti="Läpipääsyprosentti (esim. 50)"
+)
+async def arvosanalaskuri(
+    interaction: discord.Interaction,
+    pisteet: float,
+    maksimi: float,
+    lapipääsyprosentti: float
+):
+    lapiraja = (lapipääsyprosentti / 100) * maksimi
+
+    if pisteet < lapiraja:
+        arvosana = 0
+        viesti = f"Et päässyt läpi. Pisteet: {pisteet}/{maksimi} → Arvosana: **{arvosana}**"
+    else:
+        skaala = (pisteet - lapiraja) / (maksimi - lapiraja) if maksimi != lapiraja else 1
+        arvosana = round(4 + 6 * skaala)
+        arvosana = min(max(arvosana, 4), 10)
+        viesti = f"Pisteet: {pisteet}/{maksimi} → Arvosana: **{arvosana}**"
+
+    await interaction.response.send_message(viesti)
+
 @bot.tree.command(name="kulppi", description="Laskee kuinka monta kulppia annetusta ajasta")
 @app_commands.describe(aika="Aika muodossa esim. 2m30s, 1m, 45s")
 async def kulppi(interaction: discord.Interaction, aika: str):
@@ -347,7 +399,7 @@ async def seuraava_lomapaiva(interaction: discord.Interaction):
 
     if seuraava:
         paiva, nimi = seuraava
-        vastaus = paiva.strftime("%A %d.%m.%Y")  # Päiväys muodossa: "Perjantai 18.04.2025"
+        vastaus = paiva.strftime("%A %d.%m.%Y")  # Date format: "Monday 01.01.2025"
         await interaction.response.send_message(f"Seuraava lomapäivä on: {nimi} {vastaus}")
     else:
         await interaction.response.send_message("Kalenterissa ei ole tulevia lomapäiviä.", ephemeral=True)
@@ -418,6 +470,92 @@ async def meme(interaction: discord.Interaction):
 
     await interaction.response.send_message(selected_meme)
 
+class GiveawayView(discord.ui.View):
+    def __init__(self, palkinto, rooli, kesto, alkuviesti, luoja):
+        super().__init__(timeout=None)
+        self.palkinto = palkinto
+        self.rooli = rooli
+        self.kesto = kesto
+        self.osallistujat = set()
+        self.viesti = alkuviesti
+        self.luoja = luoja
+        self.loppunut = False
+        self.voittaja = None
+
+    @discord.ui.button(label="🎉 Osallistu", style=discord.ButtonStyle.green)
+    async def osallistumisnappi(self, interaction: Interaction, button: discord.ui.Button):
+        if self.loppunut:
+            await interaction.response.send_message("Arvonta on jo päättynyt.", ephemeral=True)
+            return
+        if self.rooli not in interaction.user.roles:
+            await interaction.response.send_message("Sinulla ei ole oikeaa roolia osallistuaksesi.", ephemeral=True)
+            return
+        self.osallistujat.add(interaction.user)
+        await interaction.response.send_message("Olet mukana arvonnassa!", ephemeral=True)
+
+    @discord.ui.button(label="⛔ Lopeta arvonta", style=discord.ButtonStyle.red)
+    async def lopetusnappi(self, interaction: Interaction, button: discord.ui.Button):
+        if interaction.user != self.luoja:
+            await interaction.response.send_message("Vain arvonnan luoja voi lopettaa sen.", ephemeral=True)
+            return
+        await self.lopeta_arvonta(interaction.channel)
+
+    async def lopeta_arvonta(self, kanava):
+        if self.loppunut:
+            return
+        self.loppunut = True
+        self.stop()
+        if self.osallistujat:
+            self.voittaja = random.choice(list(self.osallistujat))
+            await kanava.send(
+                f"🎉 Onnea {self.voittaja.mention}, voitit **{self.palkinto}**!",
+                view=RerollView(self)
+            )
+        else:
+            await kanava.send("Kukaan ei osallistunut arvontaan tai osallistujilla ei ollut oikeaa roolia.")
+
+class RerollView(discord.ui.View):
+    def __init__(self, giveaway_view: GiveawayView):
+        super().__init__(timeout=None)
+        self.giveaway_view = giveaway_view
+
+    @discord.ui.button(label="🎲 Arvo uusi voittaja", style=discord.ButtonStyle.blurple)
+    async def reroll_button(self, interaction: Interaction, button: discord.ui.Button):
+        if interaction.user != self.giveaway_view.luoja:
+            await interaction.response.send_message("Vain arvonnan luoja voi arpoa uuden voittajan.", ephemeral=True)
+            return
+        osallistujat = list(self.giveaway_view.osallistujat - {self.giveaway_view.voittaja})
+        if not osallistujat:
+            await interaction.response.send_message("Ei ole muita osallistujia, joista arpoa uusi voittaja.", ephemeral=True)
+            return
+        uusi_voittaja = random.choice(osallistujat)
+        self.giveaway_view.voittaja = uusi_voittaja
+        await interaction.channel.send(f"🎉 Uusi voittaja on {uusi_voittaja.mention}! Onnea **{self.giveaway_view.palkinto}**:sta!")
+        
+@bot.tree.command(name="giveaway", description="Luo arvonta tietylle palkinnolle, rooleille ja ajalle.")
+@app_commands.describe(
+    palkinto="Mitä arvotaan?",
+    kesto="Arvonnan kesto minuutteina",
+    rooli="Rooli, jolla saa osallistua"
+)
+@app_commands.checks.has_role("Mestari")
+async def giveaway(interaction: Interaction, palkinto: str, kesto: int, rooli: discord.Role):
+
+    view = GiveawayView(palkinto, rooli, kesto, None, interaction.user)
+    viesti = await interaction.response.send_message(
+        f"🎉 **Arvonta aloitettu!** 🎉\n"
+        f"**Palkinto:** {palkinto}\n"
+        f"**Osallistumisoikeus:** {rooli.mention}\n"
+        f"**Kesto:** {kesto} minuuttia\n\n"
+        f"Paina **🎉 Osallistu** -painiketta osallistuaksesi!",
+        view=view
+    )
+    alkuviesti = await interaction.original_response()
+    view.viesti = alkuviesti
+
+    await asyncio.sleep(kesto * 60)
+    await view.lopeta_arvonta(interaction.channel)
+
 @bot.tree.command(name="sammutus", description="Sammuta botti")
 @app_commands.checks.has_role("YOUR_ROLE")
 async def sammutus(interaction: discord.Interaction):
@@ -474,8 +612,6 @@ async def uudelleenkaynnistys(interaction: discord.Interaction):
     await bot.close()
     os.system("python " + __file__)
     await bot.change_presence(activity=discord.Game(name=current_status))
-
-from discord import ui, TextInput
 
 class ChannelClearModal(Modal):
     def __init__(self):
@@ -636,8 +772,6 @@ async def command_error(interaction: discord.Interaction, error):
             await interaction.response.send_message("Tämä komento on vain rooleille 'YOUR_ROLE'.")
 
 music_queue = deque()
-
-from discord.ui import Modal, TextInput
 
 @bot.tree.command(name="liity", description="Liity puhekanavaan kuuntelemaan musiikkia")
 @app_commands.checks.has_role("YOUR_ROLE")
