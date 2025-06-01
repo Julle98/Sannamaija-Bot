@@ -1,5 +1,5 @@
 # Sannamaija-Bot
-Discord bot made for the Tilu 24G server. The bot is not public, only on one server.
+Discord bot made for one private server. The bot is not public!
 The bot works fine with Visual Studio Code and Python extension from Microsoft. 
 
 I don't know if it work somewhere else than Visual Studio Code but code extensions are there so big recommendation to run it on Visual Studio Code.
