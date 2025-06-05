@@ -227,7 +227,7 @@ async def nofal(interaction):
     await interaction.response.send_message("YOUR_INVITE_LINK")
 
 @bot.tree.command(name="ruoka", description="Näyttää päivän ruoan.")
-@app_commands.checks.has_role("24G")
+@app_commands.checks.has_role("YOUR_ROLE")
 async def ruoka(interaction: discord.Interaction):
 
     weekday = datetime.now().weekday()
